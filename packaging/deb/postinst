@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    udevadm control --reload 2>/dev/null || true
+    udevadm trigger --action=change --subsystem-match=hidraw --subsystem-match=input 2>/dev/null || true
+    modprobe uinput 2>/dev/null || true
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload || true
+        # Debian convention: services are enabled on install. 3dmoused
+        # yields to a running spacenavd (integrated-spacenav mode); it never
+        # stops or disables spacenavd itself.
+        systemctl enable 3dmoused.service >/dev/null 2>&1 || true
+        if [ -n "$2" ]; then
+            systemctl try-restart 3dmoused.service || true
+        else
+            systemctl start 3dmoused.service || true
+        fi
+        systemctl --global enable 3dmouse-agent.service 3dmouse-osd.service >/dev/null 2>&1 || true
+    fi
+    echo "3DMouse Linux: log out and back in (or run 'systemctl --user start 3dmouse-agent')."
+    echo "GNOME users: gnome-extensions enable 3dmouse-linux@joshshearer.github.io"
+fi
+exit 0

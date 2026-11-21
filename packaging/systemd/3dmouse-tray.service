@@ -1,0 +1,20 @@
+[Unit]
+Description=3DMouse Linux status indicator (tray icon)
+Documentation=file:///usr/share/doc/3dmouse-linux/README.md
+PartOf=graphical-session.target
+After=graphical-session.target 3dmouse-agent.service
+Wants=3dmouse-agent.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/3dmouse-tray
+# exits 0 when no tray host appears within a minute: nothing is shown
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+
+# opt-in: not enabled by the packages; Settings > "Show status icon" enables it
+[Install]
+WantedBy=graphical-session.target

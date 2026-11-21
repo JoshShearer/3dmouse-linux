@@ -1,0 +1,25 @@
+.TH 3DMOUSE-TRAY 1 2026-11-10 "3dmouse-linux 0.1.0" "User Commands"
+.SH NAME
+3dmouse-tray \- optional 3DMouse Linux status icon
+.SH SYNOPSIS
+.B 3dmouse-tray
+.RB [ \-\-version ]
+.SH DESCRIPTION
+A status icon (StatusNotifierItem) for panels that have a tray: waybar, KDE Plasma, COSMIC, XFCE and
+others, and GNOME with the AppIndicator extension. It shows the device state and the active profile
+(the icon is greyed out when there is no device), switches profiles (a session override, or back to
+automatic selection), and opens
+.BR 3dmouse-config (1).
+.PP
+It is off by default. Turn it on in Settings, or with
+.B systemctl \-\-user enable \-\-now 3dmouse-tray.service
+and off with "Hide status icon" in its menu. If no tray appears within a minute it exits quietly.
+It talks only to
+.BR 3dmouse-agent (1).
+.SH ENVIRONMENT
+.TP
+.B THREEDMOUSE_AGENT_SOCKET
+The agent socket path.
+.SH SEE ALSO
+.BR 3dmouse-config (1),
+.BR 3dmousectl (1)

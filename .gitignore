@@ -1,0 +1,16 @@
+build/
+target/
+*.o
+*.so
+*.a
+__pycache__/
+.venv/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+dist/
+packaging/arch/pkg/
+packaging/arch/src/
+*.pkg.tar.zst
+captures/

@@ -1,0 +1,17 @@
+[package]
+name = "sm-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+sm-core.workspace = true
+sm-actions.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+

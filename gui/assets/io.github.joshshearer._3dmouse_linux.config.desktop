@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=3DMouse Settings
+GenericName=3D Mouse Configuration
+Comment=Configure 3Dconnexion 3D mice: sensitivity, buttons, per-application profiles
+Exec=3dmouse-config
+Icon=3dmouse-linux
+Terminal=false
+Categories=Settings;HardwareSettings;Qt;
+Keywords=3dconnexion;spacemouse;3dmouse;spacenav;6dof;cad;
+StartupWMClass=3dmouse-config

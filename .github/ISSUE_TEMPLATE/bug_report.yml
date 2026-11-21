@@ -1,0 +1,45 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version (`3dmousectl version`)
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Distribution, desktop and session type
+      placeholder: e.g. Ubuntu 24.04, GNOME 46, Wayland
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and USB ID (`lsusb`)
+      placeholder: e.g. SpaceMouse Compact 256f:c635
+  - type: textarea
+    id: diag
+    attributes:
+      label: Output of `3dmousectl diagnostics check`
+      render: text
+  - type: markdown
+    attributes:
+      value: |
+        A redacted support bundle helps a lot: `3dmousectl support-bundle --redact`.
+        It leaves out serial numbers, window titles and keystrokes. Look it over before attaching it.
+        Security problems go through the private "Report a vulnerability" form, not here (see SECURITY.md).

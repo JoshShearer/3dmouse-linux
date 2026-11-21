@@ -1,0 +1,35 @@
+.TH 3DMOUSE-OSD 1 2026-11-10 "3dmouse-linux 0.1.0" "User Commands"
+.SH NAME
+3dmouse-osd \- on-screen overlay for 3DMouse Linux
+.SH SYNOPSIS
+.B 3dmouse-osd
+.SH DESCRIPTION
+Draws the messages, button help and radial menus that
+.BR 3dmouse-agent (1)
+announces. It runs as the user service
+.BR 3dmouse-osd.service .
+.PP
+On compositors with wlr-layer-shell (Hyprland, Sway, KDE Plasma, COSMIC) it uses overlay-layer
+surfaces. On X11 it uses frameless always-on-top windows. It never takes keyboard focus, and pointer
+input passes through it.
+.PP
+GNOME Wayland has no layer-shell. There, and in builds without LayerShellQt on Wayland, it exits
+with status 0 and the agent keeps using desktop notifications.
+.B 3dmousectl diagnostics check
+shows which one is active.
+.PP
+The position (top, centre, bottom) and size are agent settings
+.RB ( osd_position ", " osd_scale ),
+editable in
+.BR 3dmouse-config (1).
+Everything is hidden while the screen is locked.
+.SH ENVIRONMENT
+.TP
+.B THREEDMOUSE_AGENT_SOCKET
+The agent socket path.
+.TP
+.B SM_OSD_FORCE
+Start even where no overlay is expected (for testing).
+.SH SEE ALSO
+.BR 3dmouse-agent (1),
+.BR 3dmousectl (1)

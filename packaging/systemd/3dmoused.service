@@ -1,0 +1,59 @@
+[Unit]
+Description=3DMouse Linux input broker
+Documentation=file:///usr/share/doc/3dmouse-linux/README.md
+# If spacenavd is enabled too, let it start first so ownership negotiation
+# deterministically selects integrated-spacenav mode (ADR-0001).
+After=spacenavd.service systemd-udevd.service systemd-modules-load.service
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/usr/bin/3dmoused
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=1
+WatchdogSec=20
+
+# Runs as root only so it can open root-owned 0600 hidraw/uinput nodes;
+# it holds no capabilities at all.
+User=root
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=yes
+RuntimeDirectory=3dmouse
+RuntimeDirectoryMode=0755
+UMask=0022
+
+DevicePolicy=closed
+DeviceAllow=char-hidraw r
+DeviceAllow=char-input r
+DeviceAllow=/dev/uinput rw
+
+ProtectSystem=strict
+# /run/spnav.sock (libspnav default path) lives directly in /run
+ReadWritePaths=/run
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+IPAddressDeny=any
+RestrictAddressFamilies=AF_UNIX
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+LimitNOFILE=1024
+MemoryMax=64M
+TasksMax=8
+
+[Install]
+WantedBy=multi-user.target

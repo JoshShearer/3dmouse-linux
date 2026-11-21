@@ -1,0 +1,61 @@
+.TH 3DMOUSECTL 1 2026-11-10 "3dmouse-linux 0.1.0" "User Commands"
+.SH NAME
+3dmousectl \- control and diagnose 3DMouse Linux
+.SH SYNOPSIS
+.B 3dmousectl
+.RB [ \-\-json ]
+.I command
+.RI [ args ]
+.SH COMMANDS
+.TP
+.B status
+Broker, agent and the active profile.
+.TP
+.BR "devices list" ", " "devices inspect " [\fIUSB_ID\fR]
+Detected devices. For each: descriptor, nodes, permissions and the registry entry.
+.TP
+.BR monitor " [\-\-duration 10s]"
+Live axes and buttons.
+.TP
+.BR "profile list" | show | activate " ID [\-\-persist]" | auto | export | import | delete | backup | reset\-presets
+Manage profiles.
+.B import
+is a dry run unless
+.B \-\-apply
+is given.
+.TP
+.BR "settings get" ", " "settings set " "KEY VALUE"
+.TP
+.BR calibrate " [\-\-duration 3s] [\-\-apply]"
+Measure the neutral offset. Keep your hands off the device while it runs.
+.TP
+.BR test\-action " JSON [\-\-phase press|release]"
+Run one action, for example
+.BR '{"type":"key","keys":"ctrl+z"}' .
+With
+.BR "\-\-phase press" ,
+a holdable action stays down until a matching
+.BR "\-\-phase release" ;
+this opens and closes a radial menu without a device.
+.TP
+.B diagnostics check
+Checks udev permissions, services, competing daemons, the desktop and uinput.
+The exit status is non-zero when any check fails.
+.TP
+.BR "diagnostics record" " [\-\-duration 10s] [\-\-redact] [\-\-output FILE]"
+.TP
+.BI "diagnostics replay " FILE
+Runs a recording through the input pipeline.
+.TP
+.BR support\-bundle " [\-\-output FILE]"
+A redacted support bundle. Serial numbers, window titles and key activity are never included.
+.TP
+.B service health
+.TP
+.B version
+.SH EXIT STATUS
+0 on success, 1 on any failure (including usage errors).
+.SH SEE ALSO
+.BR 3dmoused (8),
+.BR 3dmouse-agent (1),
+.BR 3dmouse-config (1)

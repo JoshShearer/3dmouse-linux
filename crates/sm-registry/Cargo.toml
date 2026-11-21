@@ -1,0 +1,15 @@
+[package]
+name = "sm-registry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+toml.workspace = true
+sm-core.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+

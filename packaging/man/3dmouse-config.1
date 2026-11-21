@@ -1,0 +1,25 @@
+.TH 3DMOUSE-CONFIG 1 2026-11-10 "3dmouse-linux 0.1.0" "User Commands"
+.SH NAME
+3dmouse-config \- 3DMouse Linux settings application
+.SH SYNOPSIS
+.B 3dmouse-config
+.SH DESCRIPTION
+A Qt 6 settings application with these pages: overview, device (live axes, 3D cube and buttons),
+navigation (speed, curves, per-axis invert and remap, dead zones, calibration), buttons, profiles,
+diagnostics and settings (including the overlay position and size, and the optional status icon).
+On first start a setup wizard checks the device, desktop, controls and 3D applications; run it again
+from Settings.
+It talks only to
+.BR 3dmouse-agent (1).
+.SH ENVIRONMENT
+.TP
+.B THREEDMOUSE_AGENT_SOCKET
+The agent socket path.
+.TP
+.B SM_GUI_SCREENSHOTS=\fIdir\fR
+Render every page to PNG and exit (use with
+.BR QT_QPA_PLATFORM=offscreen ).
+.SH SEE ALSO
+.BR 3dmousectl (1),
+.BR 3dmouse-osd (1),
+.BR 3dmouse-tray (1)

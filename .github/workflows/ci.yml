@@ -1,0 +1,90 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain 1.88.0
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal -c clippy,rustfmt
+          rustup default 1.88.0
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests (unit, property, broker e2e with fake sysfs, KWin provider on dbus-daemon)
+        run: cargo test --workspace --locked
+      - name: udev rules match the registry
+        run: python3 tools/gen-udev-rules.py --check
+
+  libspnav-interop:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libspnav-dev
+      - run: cargo build --release --locked -p sm-daemon
+      - name: Build the real libspnav client
+        run: cc -O2 -o spnav_probe tests/integration/c/spnav_probe.c -lspnav
+      # The e2e tests in sm-daemon drive a fake device. This job checks that the real
+      # libspnav client can connect to our socket and exchange the protocol handshake.
+      - name: Handshake against 3dmoused
+        # Keep the path short: AF_UNIX paths are limited to 108 bytes. A device-less
+        # daemon must answer protocol v1 with an empty device name; anything else means
+        # the probe reached a different server.
+        run: |
+          R=/tmp/smci; mkdir -p $R/nosys
+          ./target/release/3dmoused --mode native-owner --spnav-socket $R/spnav.sock \
+            --control-socket $R/ctl.sock --uinput none --sysfs $R/nosys --dev-root $R &
+          sleep 1
+          SPNAV_SOCKET=$R/spnav.sock timeout 5 ./spnav_probe 1 | tee probe.out
+          grep -q '"proto":1,"dev_name":""' probe.out
+          kill %1
+
+  gui:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake qt6-base-dev qt6-declarative-dev libqt6opengl6-dev qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-dialogs qml6-module-qtquick-templates qml6-module-qtquick-window qml6-module-qtqml-workerscript qt6-qpa-plugins
+      - run: cmake -S gui -B gui/build -DCMAKE_BUILD_TYPE=Release && cmake --build gui/build -j
+      - name: Render every page offscreen
+        run: |
+          QT_QPA_PLATFORM=offscreen SM_GUI_SCREENSHOTS=shots timeout 60 gui/build/3dmouse-config
+          test "$(ls shots | wc -l)" -eq 8   # 7 pages + the first-run wizard
+      - uses: actions/upload-artifact@v4
+        with: { name: gui-screenshots, path: shots }
+
+  deb:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix: { release: ["22.04", "24.04"] }
+    steps:
+      - uses: actions/checkout@v4
+      - run: tools/build-deb.sh ${{ matrix.release }}
+      - name: Install into a clean container
+        run: |
+          docker run --rm -v "$PWD/dist:/dist:ro" ubuntu:${{ matrix.release }} sh -c \
+            'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /dist/*.deb && 3dmoused --version && 3dmousectl version'
+      - run: python3 tools/gen-sbom.py --output dist/3dmouse-linux.cdx.json
+      - run: cd dist && sha256sum *.deb 3dmouse-linux.cdx.json > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with: { name: deb-${{ matrix.release }}, path: dist }
+
+  rpm:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: tools/build-rpm.sh 41
+      - name: Install into a clean container
+        run: |
+          docker run --rm -v "$PWD/dist:/dist:ro" fedora:41 sh -c \
+            'dnf -y -q install /dist/*.rpm && 3dmoused --version && 3dmousectl version'
+      - run: sha256sum dist/*.rpm > dist/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with: { name: rpm-fedora41, path: dist }

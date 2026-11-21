@@ -1,0 +1,57 @@
+.TH 3DMOUSED 8 2026-11-10 "3dmouse-linux 0.1.0" "System Administration"
+.SH NAME
+3dmoused \- 3DMouse Linux device broker
+.SH SYNOPSIS
+.B 3dmoused
+.RB [ \-\-mode " auto|native-owner|integrated-spacenav|passive-monitor" ]
+.RB [ \-\-input " auto|hidraw|evdev" ]
+.RB [ \-\-uinput " PATH|none" ]
+.RB [ \-\-spnav\-socket " PATH" ]
+.RB [ \-\-control\-socket " PATH" ]
+.RB [ \-\-debug ]
+.SH DESCRIPTION
+.B 3dmoused
+discovers 3Dconnexion 6-DOF devices, decodes their HID reports, and applies the axis pipeline of
+the active profile.
+It serves the libspnav-compatible socket that native applications such as Blender, FreeCAD and
+OpenSCAD use, and owns a uinput virtual keyboard and mouse for desktop actions requested by
+.BR 3dmouse-agent (1).
+It normally runs as the systemd unit
+.IR 3dmoused.service ,
+as root with no capabilities and a restricted device allowlist.
+.SH OPTIONS
+.TP
+.B \-\-mode
+.B auto
+(the default) yields to an already running libspnav server such as spacenavd
+.RB ( integrated-spacenav ),
+and otherwise owns the devices
+.RB ( native-owner ).
+.B passive-monitor
+only reports status.
+spacenavd is never stopped or disabled.
+.TP
+.B \-\-input
+Device access path. hidraw is preferred, with evdev as the fallback.
+.TP
+.B \-\-uinput
+The virtual input device, or
+.B none
+to disable injection.
+.TP
+.BR \-\-spnav\-socket " (default " /run/spnav.sock )
+.TP
+.BR \-\-control\-socket " (default " /run/3dmouse/broker.sock )
+Control clients are authorised by SO_PEERCRED: root, the active seat user, or the service's own
+uid.
+.SH FILES
+.I /run/spnav.sock
+.br
+.I /run/3dmouse/broker.sock
+.br
+.I /usr/lib/udev/rules.d/70-3dmouse-linux.rules
+.SH SEE ALSO
+.BR 3dmousectl (1),
+.BR 3dmouse-agent (1),
+.BR 3dmouse-config (1),
+.BR spacenavd (8)

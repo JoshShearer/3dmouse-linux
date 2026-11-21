@@ -1,0 +1,19 @@
+[Unit]
+Description=3DMouse Linux on-screen overlay (OSD, button help, radial menus)
+Documentation=file:///usr/share/doc/3dmouse-linux/README.md
+PartOf=graphical-session.target
+After=graphical-session.target 3dmouse-agent.service
+Wants=3dmouse-agent.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/3dmouse-osd
+# exits 0 where no overlay is possible (GNOME Wayland): notifications stay in use
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=graphical-session.target

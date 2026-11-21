@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/Main.qml</file>
+        <file>qml/HomePage.qml</file>
+        <file>qml/DevicePage.qml</file>
+        <file>qml/NavigationPage.qml</file>
+        <file>qml/ButtonsPage.qml</file>
+        <file>qml/ProfilesPage.qml</file>
+        <file>qml/DiagnosticsPage.qml</file>
+        <file>qml/SettingsPage.qml</file>
+        <file>qml/ActionEditor.qml</file>
+        <file>qml/AxisBar.qml</file>
+        <file>qml/Card.qml</file>
+        <file>qml/SetupWizard.qml</file>
+    </qresource>
+</RCC>

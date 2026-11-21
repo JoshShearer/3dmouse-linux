@@ -1,0 +1,32 @@
+[package]
+name = "sm-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "sm_daemon"
+path = "src/lib.rs"
+
+[[bin]]
+name = "3dmoused"
+path = "src/main.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+libc.workspace = true
+sm-core.workspace = true
+sm-registry.workspace = true
+sm-hid.workspace = true
+sm-pipeline.workspace = true
+sm-spnav.workspace = true
+sm-ipc.workspace = true
+sm-desktop.workspace = true
+sm-actions.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+

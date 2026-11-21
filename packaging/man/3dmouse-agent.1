@@ -1,0 +1,31 @@
+.TH 3DMOUSE-AGENT 1 2026-11-10 "3dmouse-linux 0.1.0" "User Commands"
+.SH NAME
+3dmouse-agent \- 3DMouse Linux session agent (profiles, buttons, focus)
+.SH SYNOPSIS
+.B 3dmouse-agent
+.RB [ \-\-debug ]
+.RB [ \-\-version ]
+.SH DESCRIPTION
+The per-user agent loads profiles from
+.IR $XDG_CONFIG_HOME/3dmouse-linux/ ,
+follows the focused application, and pushes the matching profile to
+.BR 3dmoused (8).
+It also runs button actions (keys, mouse buttons, macros, launch) and desktop scroll emulation.
+It stops all injection while the session is locked.
+It runs as the user unit
+.IR 3dmouse-agent.service ,
+bound to
+.IR graphical-session.target .
+Clients such as
+.BR 3dmouse-config (1)
+and
+.BR 3dmousectl (1)
+connect to
+.IR $XDG_RUNTIME_DIR/3dmouse/agent.sock ,
+which is mode 0600.
+.SH ENVIRONMENT
+.B THREEDMOUSE_BROKER_SOCKET, THREEDMOUSE_AGENT_SOCKET, THREEDMOUSE_CONFIG_DIR
+override the default paths.
+.SH SEE ALSO
+.BR 3dmousectl (1),
+.BR 3dmoused (8)

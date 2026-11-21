@@ -1,0 +1,7 @@
+{
+  "uuid": "3dmouse-linux@joshshearer.github.io",
+  "name": "3DMouse Linux focus bridge",
+  "description": "Tells the 3DMouse Linux session agent which application is focused so per-application 6-DOF profiles work on GNOME Wayland. Sends only the application id (and the window title, which the agent matches but never stores or logs) to a socket owned by your user.",
+  "shell-version": ["42", "43", "44"],
+  "version": 1
+}

@@ -1,0 +1,316 @@
+# 3DMouse Linux hardware registry (SRS §2.2, FR-101, §4.4).
+#
+# Every entry is an EXACT vid/pid on an exact transport. Do not infer one
+# model's support from another revision or transport.
+#
+# status: unknown | detected | axis_verified | buttons_verified |
+#         outputs_verified | full_verified | partial | blocked
+#
+# `source` records where the id/mapping came from; `evidence` points at the
+# physical test record under docs/compatibility/evidence/ (empty = none).
+#
+# canonical: transform from the HID device frame to the spacenavd/libspnav
+#   canonical frame. "swap_yz_inv_yz" == spacenavd DF_SWAPYZ|DF_INVYZ.
+# buttons: `code` is the Linux evdev key code (BTN_0 = 256). `index` is the
+#   logical button number exposed to libspnav clients and profiles.
+#   `hid_bit` is the bit position inside the HID button report (report id 3)
+#   when the hidraw path is used.
+# spnav_type: SPNAV_DEV_* value from libspnav spnav.h.
+
+schema_version = 1
+
+[[device]]
+vid = 0x256f
+pid = 0xc635
+name = "SpaceMouse Compact"
+family = "spacemouse-compact"
+transport = "usb"
+spnav_type = 0x20f
+axis_range = 350
+canonical = "swap_yz_inv_yz"
+status = "buttons_verified"
+evidence = "docs/compatibility/evidence/256f-c635-usb.md"
+source = "hidraw report descriptor captured 2026-11-10 on test unit; spacenavd usbdb @05cc679"
+buttons = [
+  { code = 256, hid_bit = 0, index = 0, label = "Left" },
+  { code = 257, hid_bit = 1, index = 1, label = "Right" },
+]
+
+[[device]]
+vid = 0x046d
+pid = 0xc626
+name = "SpaceNavigator"
+family = "spacenavigator"
+transport = "usb"
+spnav_type = 0x206
+axis_range = 350
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+buttons = [
+  { code = 256, hid_bit = 0, index = 0, label = "Left" },
+  { code = 257, hid_bit = 1, index = 1, label = "Right" },
+]
+
+[[device]]
+vid = 0x046d
+pid = 0xc628
+name = "SpaceNavigator for Notebooks"
+family = "spacenavigator-nb"
+transport = "usb"
+spnav_type = 0x208
+axis_range = 350
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+buttons = [
+  { code = 256, hid_bit = 0, index = 0, label = "Left" },
+  { code = 257, hid_bit = 1, index = 1, label = "Right" },
+]
+
+[[device]]
+vid = 0x046d
+pid = 0xc62b
+name = "SpaceMouse Pro"
+family = "spacemouse-pro"
+transport = "usb"
+spnav_type = 0x20a
+axis_range = 350
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb + bnhack_smpro @05cc679"
+buttons = [
+  { code = 268, index = 0, label = "1" },
+  { code = 269, index = 1, label = "2" },
+  { code = 270, index = 2, label = "3" },
+  { code = 271, index = 3, label = "4" },
+  { code = 256, index = 4, label = "Menu" },
+  { code = 257, index = 5, label = "Fit" },
+  { code = 258, index = 6, label = "T" },
+  { code = 260, index = 7, label = "R" },
+  { code = 261, index = 8, label = "F" },
+  { code = 264, index = 9, label = "Rotate" },
+  { code = 282, index = 10, label = "Lock" },
+  { code = 278, index = 11, label = "Esc" },
+  { code = 279, index = 12, label = "Alt" },
+  { code = 280, index = 13, label = "Shift" },
+  { code = 281, index = 14, label = "Ctrl" },
+]
+
+[[device]]
+vid = 0x256f
+pid = 0xc631
+name = "SpaceMouse Pro Wireless (cable)"
+family = "spacemouse-pro-wireless"
+transport = "usb"
+spnav_type = 0x20d
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb + bnhack_smpro @05cc679"
+button_profile = "spacemouse-pro"
+
+[[device]]
+vid = 0x256f
+pid = 0xc632
+name = "SpaceMouse Pro Wireless (receiver)"
+family = "spacemouse-pro-wireless"
+transport = "usb-receiver"
+spnav_type = 0x20d
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb + bnhack_smpro @05cc679"
+button_profile = "spacemouse-pro"
+
+[[device]]
+vid = 0x256f
+pid = 0xc638
+name = "SpaceMouse Pro Wireless BT (cable)"
+family = "spacemouse-pro-wireless-bt"
+transport = "usb"
+spnav_type = 0x20d
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+button_profile = "spacemouse-pro"
+
+[[device]]
+vid = 0x256f
+pid = 0xc633
+name = "SpaceMouse Enterprise"
+family = "spacemouse-enterprise"
+transport = "usb"
+spnav_type = 0x20e
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb + bnhack_sment @05cc679 (LCD protocol unknown: not supported)"
+buttons = [
+  { code = 268, index = 0, label = "1" },
+  { code = 269, index = 1, label = "2" },
+  { code = 270, index = 2, label = "3" },
+  { code = 271, index = 3, label = "4" },
+  { code = 272, index = 4, label = "5" },
+  { code = 273, index = 5, label = "6" },
+  { code = 274, index = 6, label = "7" },
+  { code = 275, index = 7, label = "8" },
+  { code = 276, index = 8, label = "9" },
+  { code = 277, index = 9, label = "10" },
+  { code = 332, index = 10, label = "11" },
+  { code = 333, index = 11, label = "12" },
+  { code = 256, index = 12, label = "Menu" },
+  { code = 257, index = 13, label = "Fit" },
+  { code = 258, index = 14, label = "T" },
+  { code = 260, index = 15, label = "R" },
+  { code = 261, index = 16, label = "F" },
+  { code = 264, index = 17, label = "Rotate" },
+  { code = 278, index = 18, label = "Esc" },
+  { code = 279, index = 19, label = "Alt" },
+  { code = 280, index = 20, label = "Shift" },
+  { code = 281, index = 21, label = "Ctrl" },
+  { code = 282, index = 22, label = "Lock" },
+  { code = 291, index = 23, label = "Enter" },
+  { code = 292, index = 24, label = "Delete" },
+  { code = 430, index = 25, label = "Tab" },
+  { code = 431, index = 26, label = "Space" },
+  { code = 358, index = 27, label = "V1" },
+  { code = 359, index = 28, label = "V2" },
+  { code = 360, index = 29, label = "V3" },
+  { code = 266, index = 30, label = "ISO" },
+]
+
+[[device]]
+vid = 0x256f
+pid = 0xc62e
+name = "SpaceMouse Wireless (cable)"
+family = "spacemouse-wireless"
+transport = "usb"
+spnav_type = 0x20c
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x256f
+pid = 0xc62f
+name = "SpaceMouse Wireless (receiver)"
+family = "spacemouse-wireless"
+transport = "usb-receiver"
+spnav_type = 0x20c
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x256f
+pid = 0xc63a
+name = "SpaceMouse Wireless (Bluetooth)"
+family = "spacemouse-wireless-bt"
+transport = "bluetooth"
+spnav_type = 0x20c
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x256f
+pid = 0xc636
+name = "SpaceMouse Module"
+family = "spacemouse-module"
+transport = "usb"
+spnav_type = 0x210
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x046d
+pid = 0xc627
+name = "SpaceExplorer"
+family = "spaceexplorer"
+transport = "usb"
+spnav_type = 0x207
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x046d
+pid = 0xc625
+name = "SpacePilot"
+family = "spacepilot"
+transport = "usb"
+spnav_type = 0x205
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x046d
+pid = 0xc629
+name = "SpacePilot Pro"
+family = "spacepilot-pro"
+transport = "usb"
+spnav_type = 0x209
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x046d
+pid = 0xc623
+name = "SpaceTraveler"
+family = "spacetraveler"
+transport = "usb"
+spnav_type = 0x204
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x046d
+pid = 0xc621
+name = "SpaceBall 5000 (USB)"
+family = "spaceball-5000"
+transport = "usb"
+spnav_type = 0x203
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x046d
+pid = 0xc605
+name = "CadMan"
+family = "cadman"
+transport = "usb"
+spnav_type = 0x201
+canonical = "swap_yz_inv_yz"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x046d
+pid = 0xc603
+name = "SpaceMouse Plus XT (USB)"
+family = "spacemouse-plus-xt"
+transport = "usb"
+spnav_type = 0x200
+canonical = "identity"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+[[device]]
+vid = 0x046d
+pid = 0xc606
+name = "SpaceMouse Classic (USB)"
+family = "spacemouse-classic"
+transport = "usb"
+spnav_type = 0x202
+canonical = "identity"
+status = "unknown"
+source = "spacenavd usbdb @05cc679"
+
+# 3Dconnexion devices that are NOT 6-DOF and must never be claimed (SRS §2.2).
+[[blocked]]
+vid = 0x256f
+pids = [0xc650, 0xc651, 0xc654, 0xc655, 0xc656, 0xc657, 0xc658, 0xc664, 0xc668, 0xc665, 0xc62c, 0xc641]
+reason = "CadMouse / Keyboard / Numpad family (spacenavd devid_blacklist @05cc679)"

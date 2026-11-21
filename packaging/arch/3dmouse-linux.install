@@ -1,0 +1,36 @@
+_reload() {
+    udevadm control --reload 2>/dev/null || true
+    udevadm trigger --action=change --subsystem-match=hidraw --subsystem-match=input 2>/dev/null || true
+    modprobe uinput 2>/dev/null || true
+}
+
+post_install() {
+    _reload
+    cat <<'MSG'
+==> 3DMouse Linux installed. Enable it with:
+      sudo systemctl enable --now 3dmoused
+      systemctl --user enable --now 3dmouse-agent 3dmouse-osd
+    Then run `3dmouse-config` or `3dmousectl diagnostics check`.
+    Optional tray icon: Settings > "Show a status icon", or
+      systemctl --user enable --now 3dmouse-tray
+==> If spacenavd is enabled, 3dmoused detects it and runs in
+    integrated-spacenav mode (spacenavd keeps the device). To let
+    3dmoused own the device instead: sudo systemctl disable --now spacenavd
+MSG
+}
+
+post_upgrade() {
+    _reload
+    systemctl try-restart 3dmoused.service 2>/dev/null || true
+    echo "==> restart the session services: systemctl --user restart 3dmouse-agent 3dmouse-osd"
+    echo "==> reopen any running 3D apps (Blender, KiCad, ...): libspnav does not reconnect"
+}
+
+pre_remove() {
+    systemctl disable --now 3dmoused.service 2>/dev/null || true
+}
+
+post_remove() {
+    udevadm control --reload 2>/dev/null || true
+    echo "==> per-user settings remain in ~/.config/3dmouse-linux (delete manually if wanted)"
+}

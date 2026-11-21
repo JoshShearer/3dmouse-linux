@@ -1,0 +1,53 @@
+# Maintainer: 3DMouse Linux contributors
+#
+# Local build from this source tree:   cd packaging/arch && makepkg -si
+# For a release build, replace the `_src` logic with a source=() tarball.
+pkgname=3dmouse-linux
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Userspace driver and configuration suite for 3Dconnexion 3D mice (libspnav compatible)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/JoshShearer/3dmouse-linux"
+license=('GPL-3.0-or-later')
+depends=('glibc' 'gcc-libs' 'systemd' 'qt6-base' 'qt6-declarative' 'layer-shell-qt')
+makedepends=('cargo' 'cmake')
+optdepends=(
+    'libspnav: lets native 6-DOF applications (Blender, FreeCAD, OpenSCAD) talk to the broker'
+    'libnotify: on-screen notifications for profile changes (notify-send)'
+    'glib2: launch actions via gio when gtk-launch is not installed'
+)
+# spacemouse-linux is the pre-release name of this package
+conflicts=('spacemouse-linux')
+replaces=('spacemouse-linux')
+install=3dmouse-linux.install
+backup=()
+options=('!lto' '!debug')
+
+_src() { cd "$startdir/../.."; }
+
+prepare() {
+    _src
+    export RUSTUP_TOOLCHAIN=stable
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+    _src
+    export RUSTUP_TOOLCHAIN=stable CARGO_TARGET_DIR="$PWD/target"
+    . tools/repro-flags.sh
+    cargo build --frozen --release --workspace
+    cmake -S gui -B gui/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build gui/build
+}
+
+check() {
+    _src
+    export RUSTUP_TOOLCHAIN=stable CARGO_TARGET_DIR="$PWD/target"
+    . tools/repro-flags.sh
+    cargo test --frozen --release --workspace
+}
+
+package() {
+    _src
+    packaging/install-tree.sh "$pkgdir" gnome45
+}
