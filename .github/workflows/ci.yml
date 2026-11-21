@@ -10,7 +10,7 @@ jobs:
   rust:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Toolchain 1.88.0
         run: |
           rustup toolchain install 1.88.0 --profile minimal -c clippy,rustfmt
@@ -27,7 +27,7 @@ jobs:
   libspnav-interop:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y libspnav-dev
       - run: cargo build --release --locked -p sm-daemon
       - name: Build the real libspnav client
@@ -50,14 +50,14 @@ jobs:
   gui:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y cmake qt6-base-dev qt6-declarative-dev libqt6opengl6-dev qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-dialogs qml6-module-qtquick-templates qml6-module-qtquick-window qml6-module-qtqml-workerscript qt6-qpa-plugins
       - run: cmake -S gui -B gui/build -DCMAKE_BUILD_TYPE=Release && cmake --build gui/build -j
       - name: Render every page offscreen
         run: |
           QT_QPA_PLATFORM=offscreen SM_GUI_SCREENSHOTS=shots timeout 60 gui/build/3dmouse-config
           test "$(ls shots | wc -l)" -eq 8   # 7 pages + the first-run wizard
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: gui-screenshots, path: shots }
 
   deb:
@@ -65,7 +65,7 @@ jobs:
     strategy:
       matrix: { release: ["22.04", "24.04"] }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: tools/build-deb.sh ${{ matrix.release }}
       - name: Install into a clean container
         run: |
@@ -73,7 +73,7 @@ jobs:
             'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /dist/*.deb && 3dmoused --version && 3dmousectl version'
       - run: python3 tools/gen-sbom.py --output dist/3dmouse-linux.cdx.json
       - run: cd dist && sha256sum *.deb 3dmouse-linux.cdx.json > SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: deb-${{ matrix.release }}
           path: dist
@@ -81,12 +81,12 @@ jobs:
   rpm:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: tools/build-rpm.sh 41
       - name: Install into a clean container
         run: |
           docker run --rm -v "$PWD/dist:/dist:ro" fedora:41 sh -c \
             'dnf -y -q install /dist/*.rpm && 3dmoused --version && 3dmousectl version'
       - run: sha256sum dist/*.rpm > dist/SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: rpm-fedora41, path: dist }
