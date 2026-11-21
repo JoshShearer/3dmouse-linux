@@ -74,7 +74,9 @@ jobs:
       - run: python3 tools/gen-sbom.py --output dist/3dmouse-linux.cdx.json
       - run: cd dist && sha256sum *.deb 3dmouse-linux.cdx.json > SHA256SUMS
       - uses: actions/upload-artifact@v4
-        with: { name: deb-${{ matrix.release }}, path: dist }
+        with:
+          name: deb-${{ matrix.release }}
+          path: dist
 
   rpm:
     runs-on: ubuntu-24.04
