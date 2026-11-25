@@ -25,8 +25,8 @@ broker's own uid is accepted.
 | `status` | – | `BrokerStatus` (`crates/sm-ipc/src/lib.rs`) |
 | `registry` | – | the embedded device registry |
 | `subscribe` | `motion` bool, `max_hz` 1–1000 (default 60), `buttons` bool, `devices` bool | events: `motion {dev, raw[6], norm[6], spnav[6], t}`, `button {dev, button, pressed, t}`, `device {op, …}`, `status` |
-| `set_config` **control** | `nav` NavConfig, `app_mode`, `spnav_buttons` {"devbtn": spnavbtn}, `profile` | validated; the sender becomes the config owner; owner disconnect reverts |
-| `clear_config` **control** | – | built-in defaults |
+| `set_config` **control** | `nav` NavConfig, `app_mode`, `spnav_buttons` {"devbtn": spnavbtn}, `profile` | every field is optional; a supplied `nav`, `app_mode` or `spnav_buttons` that is not understood (including `null`) is rejected with `invalid` and the active profile is kept; the sender becomes the config owner; owner disconnect reverts |
+| `clear_config` **control** | – | built-in defaults; only the current config owner may clear, anyone else gets `not_owner` |
 | `set_session` **control** | `locked` bool | while locked `inject` is refused and keys are released |
 | `inject` **control** | one of `keys` [codes] (+ `down` bool, omitted = tap), `scroll {v, h}` (1/120 notch units), `rel {code, value}` | key codes limited to the shipped key table + mouse buttons; 2000 events/s/connection |
 | `release_all` **control** | – | release every key this connection holds |

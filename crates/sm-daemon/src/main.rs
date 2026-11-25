@@ -948,7 +948,13 @@ impl Broker {
                 if let Err(e) = nav.validate() {
                     return sm_ipc::err(id, "invalid", e);
                 }
-                let app_mode: AppMode = req.get("app_mode").and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default();
+                // only an absent field means the default: a value we don't understand (e.g. a mode
+                // from a newer agent) must not silently become another mode
+                let app_mode: AppMode = match req.get("app_mode").map(|m| serde_json::from_value(m.clone())) {
+                    Some(Ok(m)) => m,
+                    Some(Err(e)) => return sm_ipc::err(id, "invalid", format!("app_mode: {e}")),
+                    None => AppMode::default(),
+                };
                 let spnav_buttons = match req.get("spnav_buttons") {
                     Some(Value::Object(m)) => {
                         let mut out = BTreeMap::new();
@@ -962,7 +968,8 @@ impl Broker {
                         }
                         Some(out)
                     }
-                    _ => None,
+                    Some(_) => return sm_ipc::err(id, "invalid", "spnav_buttons must be an object mapping 0..63 -> 0..63"),
+                    None => None,
                 };
                 let profile = req.get("profile").and_then(|p| p.as_str()).unwrap_or("unnamed").chars().take(64).collect();
                 if let Some(prev) = self.cfg.owner_conn.filter(|p| *p != cid) {
@@ -972,6 +979,10 @@ impl Broker {
                 sm_ipc::ok(id, json!({"applied": true}))
             }
             "clear_config" => {
+                // same rule as disconnect: a stale client must not clear a profile set after its own
+                if self.cfg.owner_conn != Some(cid) {
+                    return sm_ipc::err(id, "not_owner", "this connection does not own the active profile");
+                }
                 self.apply_config(ActiveConfig::default());
                 sm_ipc::ok(id, json!({"applied": true}))
             }
