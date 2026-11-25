@@ -207,6 +207,56 @@ fn control_socket_config_routing_and_owner_revert() {
     assert!(o2.call("frobnicate", json!({})).unwrap_err().contains("unknown"));
 }
 
+/// An optional field that is supplied but not understood (e.g. a mode from a newer agent) is
+/// rejected before it touches the active profile; it is never treated as absent (issue #1).
+#[test]
+fn set_config_rejects_unknown_optional_fields_and_keeps_the_profile() {
+    let mut e = setup("badcfg");
+    let mut c = spnav(&e);
+    let mut owner = ctl(&e);
+    owner.call("set_config", json!({"app_mode": "desktop-emulation", "profile": "desktop", "spnav_buttons": {}})).unwrap();
+    for bad in [
+        json!({"app_mode": "future_mode", "profile": "bad"}),
+        json!({"app_mode": 5, "profile": "bad"}),
+        json!({"app_mode": null, "profile": "bad"}),
+        json!({"app_mode": "desktop-emulation", "spnav_buttons": 5, "profile": "bad"}),
+        json!({"app_mode": "desktop-emulation", "spnav_buttons": [0, 1], "profile": "bad"}),
+        json!({"app_mode": "desktop-emulation", "spnav_buttons": null, "profile": "bad"}),
+    ] {
+        let r = owner.call("set_config", bad.clone());
+        assert!(r.as_ref().is_err_and(|m| m.starts_with("invalid: ")), "{bad} must be rejected as invalid, got {r:?}");
+        assert_eq!(status(&e)["profile"], "desktop", "{bad} must not replace the active profile");
+    }
+    // the previous profile still routes input: no native motion, no unmapped buttons
+    write(&mut e, &[ev(EV_REL, 0, 300), ev(EV_SYN, 0, 0), ev(EV_KEY, 256, 1), ev(EV_SYN, 0, 0), ev(EV_KEY, 256, 0), ev(EV_SYN, 0, 0)]);
+    let evs = collect(&mut c, 150);
+    assert!(!evs.iter().any(|e| matches!(e, ClientEvent::Motion(m, _) if *m != [0; 6])), "still desktop mode: {evs:?}");
+    assert!(!evs.iter().any(|e| matches!(e, ClientEvent::Button(..))), "still the empty button map: {evs:?}");
+    // absent fields still mean the defaults
+    owner.call("set_config", json!({"profile": "plain"})).unwrap();
+    assert_eq!(status(&e)["profile"], "plain");
+    write(&mut e, &[ev(EV_REL, 0, 300), ev(EV_SYN, 0, 0), ev(EV_KEY, 256, 1), ev(EV_SYN, 0, 0)]);
+    let evs = collect(&mut c, 150);
+    assert!(evs.iter().any(|e| matches!(e, ClientEvent::Motion(m, _) if m[0] != 0)), "native motion by default: {evs:?}");
+    assert!(evs.contains(&ClientEvent::Button(0, true)), "identity button map by default: {evs:?}");
+}
+
+/// A stale client cannot clear a profile another client set after it (issue #2).
+#[test]
+fn clear_config_only_clears_the_callers_own_profile() {
+    let e = setup("clear");
+    let mut a = ctl(&e);
+    let mut b = ctl(&e);
+    a.call("set_config", json!({"profile": "from-a"})).unwrap();
+    b.call("set_config", json!({"profile": "from-b"})).unwrap();
+    let r = a.call("clear_config", json!({}));
+    assert!(r.as_ref().is_err_and(|m| m.starts_with("not_owner: ")), "stale clear must be refused, got {r:?}");
+    assert_eq!(status(&e)["profile"], "from-b");
+    // the refusal leaves ownership alone: B may still clear
+    b.call("clear_config", json!({})).unwrap();
+    assert_eq!(status(&e)["profile"], "builtin-default");
+}
+
 /// The virtual joystick exists as soon as game mode is active, before the cap is touched,
 /// waits for unlock when chosen on a locked session, and goes away with the mode.
 /// Needs a writable /dev/uinput, so it runs only with SM_UINPUT_TEST=1.

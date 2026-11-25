@@ -27,6 +27,11 @@ First alpha, and the first public release.
   (GNOME and KDE use logind's LockedHint; elsewhere only the user's processes are checked).
 - The virtual joystick appeared only after the cap was first touched, so a game started
   before that saw no controller. It now appears as soon as a game-controller profile is active.
+- Broker: `set_config` rejects an unknown `app_mode` or malformed `spnav_buttons` instead of
+  applying a different mode or mapping and reporting success (#1).
+- Broker: `clear_config` from a client that is not the config owner is refused (`not_owner`), so it
+  can't clear a profile another client set after it (#2).
+- Agent: a profile the broker rejects is logged as a warning instead of only at debug level.
 
 ### Added
 - Opt-in desktop modes: pointer control (accessibility), key gestures on axes (media control,

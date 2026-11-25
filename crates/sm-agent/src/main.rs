@@ -969,6 +969,10 @@ impl Agent {
                     self.reselect(false);
                 }
             }
+            // `denied` was already reported at hello; repeating it on every profile change is noise
+            "set_config" if !ok && m["error"]["code"] != "denied" => {
+                log!("warn", "broker rejected set_config, the previous profile stays active: {}", m["error"]);
+            }
             "set_config" | "inject" | "subscribe" | "set_session" if !ok => {
                 log!("debug", "broker rejected {purpose}: {}", m["error"]);
             }
