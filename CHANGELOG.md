@@ -31,6 +31,7 @@ First alpha, and the first public release.
   applying a different mode or mapping and reporting success (#1).
 - Broker: `clear_config` from a client that is not the config owner is refused (`not_owner`), so it
   can't clear a profile another client set after it (#2).
+- Agent: a profile the broker rejects is logged as a warning instead of only at debug level.
 
 ### Added
 - Opt-in desktop modes: pointer control (accessibility), key gestures on axes (media control,
