@@ -13,7 +13,7 @@ use sm_ipc::{BrokerStatus, ButtonLabel, DeviceStatus, LineBuf, PeerCred, ReadOut
 use sm_pipeline::{NavConfig, Pipeline};
 use sm_registry::Registry;
 use sm_spnav::{DeviceInfo, SpnavClient, SpnavServer};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::os::fd::{AsRawFd, RawFd};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
@@ -25,6 +25,11 @@ const PERIODIC_US: u64 = 1_000_000;
 const RETRY_US: u64 = 5_000_000;
 const MAX_CTL_CLIENTS: usize = 32;
 const MAX_INJECT_PER_SEC: u32 = 2000;
+/// Control requests handled per connection per loop pass, so one busy client can't starve the rest.
+const CTL_BATCH: usize = 256;
+/// Requests queued per connection before the broker stops reading from it. The client then
+/// blocks on a full socket instead of having requests dropped.
+const CTL_QUEUE_MAX: usize = 1024;
 
 // ------------------------------------------------------------- logging
 
@@ -177,6 +182,10 @@ struct Ctl {
     pressed: Vec<u16>,
     inject_window_us: u64,
     inject_count: u32,
+    /// requests read but not yet handled, oldest first
+    queue: VecDeque<String>,
+    /// the peer closed its end; it is removed once its queued requests are handled
+    eof: bool,
     dead: bool,
 }
 
@@ -843,19 +852,36 @@ impl Broker {
                 pressed: Vec::new(),
                 inject_window_us: 0,
                 inject_count: 0,
+                queue: VecDeque::new(),
+                eof: false,
                 dead: false,
             });
         }
     }
 
-    fn handle_ctl(&mut self, id: u64) {
+    fn read_ctl(&mut self, id: u64) {
         let Some(c) = self.ctls.iter_mut().find(|c| c.id == id) else { return };
-        let mut lines = Vec::new();
-        let r = c.lb.read_from(&mut c.s, &mut lines);
-        if r != ReadOutcome::Open {
-            c.dead = true;
+        if c.eof || c.queue.len() >= CTL_QUEUE_MAX {
+            return;
         }
-        for l in lines.into_iter().take(256) {
+        let mut lines = Vec::new();
+        match c.lb.read_from(&mut c.s, &mut lines) {
+            ReadOutcome::Open => {}
+            ReadOutcome::Closed => c.eof = true,
+            ReadOutcome::Overflow => c.dead = true,
+        }
+        c.queue.extend(lines);
+    }
+
+    /// Handle up to `CTL_BATCH` queued requests of one connection, in order. The rest wait for
+    /// the next loop pass, which then doesn't block in poll.
+    fn process_ctl(&mut self, id: u64) {
+        for _ in 0..CTL_BATCH {
+            let Some(c) = self.ctls.iter_mut().find(|c| c.id == id) else { return };
+            if c.dead {
+                return;
+            }
+            let Some(l) = c.queue.pop_front() else { return };
             let reply = match serde_json::from_str::<Value>(&l) {
                 Ok(req) => self.dispatch(id, &req),
                 Err(e) => sm_ipc::err(&Value::Null, "bad_request", e.to_string()),
@@ -987,7 +1013,10 @@ impl Broker {
                 sm_ipc::ok(id, json!({"applied": true}))
             }
             "set_session" => {
-                let locked = req.get("locked").and_then(|v| v.as_bool()).unwrap_or(false);
+                // anything but a real boolean is refused: defaulting to `false` would unlock
+                let Some(locked) = req.get("locked").and_then(|v| v.as_bool()) else {
+                    return sm_ipc::err(id, "invalid", "locked must be true or false");
+                };
                 if locked && !self.locked {
                     log!("info", "session locked: input injection suspended");
                     if let Some(g) = &mut self.gamepad {
@@ -1080,7 +1109,7 @@ impl Broker {
     }
 
     fn reap_ctls(&mut self) {
-        let dead: Vec<u64> = self.ctls.iter().filter(|c| c.dead).map(|c| c.id).collect();
+        let dead: Vec<u64> = self.ctls.iter().filter(|c| c.dead || (c.eof && c.queue.is_empty())).map(|c| c.id).collect();
         for d in dead {
             // crash-safety: a dying agent never leaves keys down (FR-306)
             self.release_ctl_keys(d);
@@ -1126,6 +1155,9 @@ impl Broker {
     }
 
     fn timeout_ms(&self, now: u64) -> i32 {
+        if self.ctls.iter().any(|c| !c.queue.is_empty()) {
+            return 0; // queued control requests are handled on the next pass
+        }
         let mut d = self.next_periodic.saturating_sub(now);
         if let Some(r) = self.rescan_at {
             d = d.min(r.saturating_sub(now));
@@ -1188,8 +1220,12 @@ impl Broker {
             add(self.inotify, libc::POLLIN, Tag::Inotify);
             add(self.ctl_listener.as_raw_fd(), libc::POLLIN, Tag::CtlListen);
             for c in &self.ctls {
-                let ev = libc::POLLIN | if c.wb.is_empty() { 0 } else { libc::POLLOUT };
-                add(c.s.as_raw_fd(), ev, Tag::Ctl(c.id));
+                // a full queue stops reading, so the client waits instead of losing requests
+                let read = !c.eof && c.queue.len() < CTL_QUEUE_MAX;
+                let ev = if read { libc::POLLIN } else { 0 } | if c.wb.is_empty() { 0 } else { libc::POLLOUT };
+                if ev != 0 {
+                    add(c.s.as_raw_fd(), ev, Tag::Ctl(c.id));
+                }
             }
             if let Some(s) = &self.spnav {
                 add(s.listen_fd(), libc::POLLIN, Tag::SpnavListen);
@@ -1236,10 +1272,10 @@ impl Broker {
                     Tag::Ctl(id) => {
                         if pfd.revents & (libc::POLLHUP | libc::POLLERR) != 0 && pfd.revents & libc::POLLIN == 0 {
                             if let Some(c) = self.ctls.iter_mut().find(|c| c.id == id) {
-                                c.dead = true;
+                                c.eof = true; // requests it sent before hanging up still run
                             }
                         } else {
-                            self.handle_ctl(id);
+                            self.read_ctl(id);
                         }
                     }
                     Tag::SpnavListen => {
@@ -1256,10 +1292,16 @@ impl Broker {
                     Tag::Dev(id) => self.handle_device_readable(id),
                 }
             }
+            for id in self.ctls.iter().filter(|c| !c.queue.is_empty()).map(|c| c.id).collect::<Vec<_>>() {
+                self.process_ctl(id);
+            }
             self.timers();
             for c in &mut self.ctls {
                 if c.wb.flush(&mut c.s).is_err() {
-                    c.dead = true;
+                    // the peer is gone: its replies can't be delivered, but the requests it sent
+                    // before hanging up still run, then it is removed
+                    c.wb.buf.clear();
+                    c.eof = true;
                 }
             }
             self.reap_ctls();

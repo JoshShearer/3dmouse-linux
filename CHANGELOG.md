@@ -32,6 +32,13 @@ First alpha, and the first public release.
 - Broker: `clear_config` from a client that is not the config owner is refused (`not_owner`), so it
   can't clear a profile another client set after it (#2).
 - Agent: a profile the broker rejects is logged as a warning instead of only at debug level.
+- Broker: `set_session` without a boolean `locked` (missing, `null`, a string or a number) is
+  refused instead of unlocking the session.
+- Broker: a control client sending more than 256 requests at once had the rest silently dropped.
+  Every request is now answered, in order; a client that sends faster than the broker handles
+  requests waits on the socket instead.
+- Virtual input: a key chord with a refused key (outside the allowlist, or Alt+SysRq) pressed the
+  keys before it and left them held. Such a chord now presses nothing.
 
 ### Added
 - Opt-in desktop modes: pointer control (accessibility), key gestures on axes (media control,

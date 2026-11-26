@@ -257,6 +257,64 @@ fn clear_config_only_clears_the_callers_own_profile() {
     assert_eq!(status(&e)["profile"], "builtin-default");
 }
 
+/// `set_session` without a real boolean must not unlock: it is refused and the lock stays.
+#[test]
+fn set_session_rejects_a_missing_or_malformed_lock_state() {
+    let e = setup("session");
+    let mut c = ctl(&e);
+    c.call("set_session", json!({"locked": true})).unwrap();
+    for bad in [json!({}), json!({"locked": null}), json!({"locked": "false"}), json!({"locked": 0})] {
+        let r = c.call("set_session", bad.clone());
+        assert!(r.as_ref().is_err_and(|m| m.starts_with("invalid: ")), "{bad} must be rejected as invalid, got {r:?}");
+        assert_eq!(status(&e)["locked"], true, "{bad} must not unlock the session");
+    }
+    c.call("set_session", json!({"locked": false})).unwrap();
+    assert_eq!(status(&e)["locked"], false);
+}
+
+/// Every request gets a reply, in order, however many a client sends at once; none are dropped.
+#[test]
+fn pipelined_requests_are_all_answered_in_order() {
+    use std::io::{BufRead, BufReader};
+    let e = setup("pipeline");
+    let n = 5000u64;
+    let s = std::os::unix::net::UnixStream::connect(e.dir.join("broker.sock")).unwrap();
+    s.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    let mut reqs = String::new();
+    for i in 1..n {
+        reqs += &format!("{}\n", json!({"v": 1, "id": i, "cmd": "hello"}));
+    }
+    // the last request changes state, so it is visible whether it ran at all
+    reqs += &format!("{}\n", json!({"v": 1, "id": n, "cmd": "set_session", "locked": true}));
+    let mut w = s.try_clone().unwrap();
+    let writer = std::thread::spawn(move || w.write_all(reqs.as_bytes()).unwrap());
+    let ids: Vec<u64> = BufReader::new(s)
+        .lines()
+        .map_while(Result::ok)
+        .map(|l| serde_json::from_str::<serde_json::Value>(&l).unwrap())
+        .filter_map(|m| m["id"].as_u64())
+        .take(n as usize)
+        .collect();
+    writer.join().unwrap();
+    assert_eq!(ids, (1..=n).collect::<Vec<_>>(), "every request answered once, in order");
+    assert_eq!(status(&e)["locked"], true, "the last request ran");
+}
+
+/// A client that sends a burst and hangs up at once still has every request run.
+#[test]
+fn requests_sent_before_hanging_up_still_run() {
+    let e = setup("hangup");
+    let mut reqs = String::new();
+    for i in 1..2000 {
+        reqs += &format!("{}\n", json!({"v": 1, "id": i, "cmd": "hello"}));
+    }
+    reqs += &format!("{}\n", json!({"v": 1, "id": 2000, "cmd": "set_session", "locked": true}));
+    let mut s = std::os::unix::net::UnixStream::connect(e.dir.join("broker.sock")).unwrap();
+    s.write_all(reqs.as_bytes()).unwrap();
+    drop(s);
+    wait_for("the last request to run", 3000, || status(&e)["locked"] == true);
+}
+
 /// The virtual joystick exists as soon as game mode is active, before the cap is touched,
 /// waits for unlock when chosen on a locked session, and goes away with the mode.
 /// Needs a writable /dev/uinput, so it runs only with SM_UINPUT_TEST=1.
