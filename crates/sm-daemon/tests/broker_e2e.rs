@@ -257,6 +257,21 @@ fn clear_config_only_clears_the_callers_own_profile() {
     assert_eq!(status(&e)["profile"], "builtin-default");
 }
 
+/// `set_session` without a real boolean must not unlock: it is refused and the lock stays.
+#[test]
+fn set_session_rejects_a_missing_or_malformed_lock_state() {
+    let e = setup("session");
+    let mut c = ctl(&e);
+    c.call("set_session", json!({"locked": true})).unwrap();
+    for bad in [json!({}), json!({"locked": null}), json!({"locked": "false"}), json!({"locked": 0})] {
+        let r = c.call("set_session", bad.clone());
+        assert!(r.as_ref().is_err_and(|m| m.starts_with("invalid: ")), "{bad} must be rejected as invalid, got {r:?}");
+        assert_eq!(status(&e)["locked"], true, "{bad} must not unlock the session");
+    }
+    c.call("set_session", json!({"locked": false})).unwrap();
+    assert_eq!(status(&e)["locked"], false);
+}
+
 /// The virtual joystick exists as soon as game mode is active, before the cap is touched,
 /// waits for unlock when chosen on a locked session, and goes away with the mode.
 /// Needs a writable /dev/uinput, so it runs only with SM_UINPUT_TEST=1.

@@ -987,7 +987,10 @@ impl Broker {
                 sm_ipc::ok(id, json!({"applied": true}))
             }
             "set_session" => {
-                let locked = req.get("locked").and_then(|v| v.as_bool()).unwrap_or(false);
+                // anything but a real boolean is refused: defaulting to `false` would unlock
+                let Some(locked) = req.get("locked").and_then(|v| v.as_bool()) else {
+                    return sm_ipc::err(id, "invalid", "locked must be true or false");
+                };
                 if locked && !self.locked {
                     log!("info", "session locked: input injection suspended");
                     if let Some(g) = &mut self.gamepad {
