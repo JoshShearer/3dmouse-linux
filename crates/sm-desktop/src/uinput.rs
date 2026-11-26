@@ -125,11 +125,30 @@ impl Uinput {
         Ok(())
     }
 
-    /// Press a chord in order, or release it in reverse order.
+    /// Press a chord in order, or release it in reverse order. A press is all or nothing: a
+    /// chord with a refused key presses none of it, and a write error releases what it pressed.
     pub fn chord(&mut self, codes: &[u16], down: bool) -> std::io::Result<()> {
         if down {
+            if let Some(c) = codes.iter().find(|c| !allowed_key(**c)) {
+                return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, format!("key code {c} not allowlisted")));
+            }
+            let mut would = self.pressed.clone();
+            would.extend_from_slice(codes);
+            if sm_actions::keys::is_sysrq_combo(&would) {
+                return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "alt+sysrq refused (kernel magic SysRq)"));
+            }
+            let mut pressed_here = Vec::new();
             for c in codes {
-                self.key(*c, true)?;
+                let was_down = self.pressed.contains(c);
+                if let Err(e) = self.key(*c, true) {
+                    for k in pressed_here.iter().rev() {
+                        let _ = self.key(*k, false);
+                    }
+                    return Err(e);
+                }
+                if !was_down {
+                    pressed_here.push(*c);
+                }
             }
         } else {
             for c in codes.iter().rev() {
@@ -329,6 +348,44 @@ impl Drop for Gamepad {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A `Uinput` that writes its events to a plain file instead of a kernel device.
+    fn to_file(name: &str) -> (Uinput, std::path::PathBuf) {
+        let p = std::env::temp_dir().join(format!("sm-uinput-{name}-{}", std::process::id()));
+        let f = OpenOptions::new().create(true).truncate(true).write(true).open(&p).unwrap();
+        (Uinput { f, pressed: Vec::new(), events_sent: 0 }, p)
+    }
+
+    fn key_events(p: &std::path::Path) -> Vec<(u16, i32)> {
+        std::fs::read(p)
+            .unwrap()
+            .chunks(24)
+            .map(|e| (u16::from_ne_bytes([e[16], e[17]]), u16::from_ne_bytes([e[18], e[19]]), i32::from_ne_bytes([e[20], e[21], e[22], e[23]])))
+            .filter(|(t, _, _)| *t == EV_KEY)
+            .map(|(_, c, v)| (c, v))
+            .collect()
+    }
+
+    /// A chord that cannot be pressed in full presses nothing: a refused key later in the chord
+    /// must not leave the keys before it held down, untracked by the caller.
+    #[test]
+    fn refused_chord_presses_no_key() {
+        let (shift, alt, sysrq, a) = (42, 56, sm_actions::keys::KEY_SYSRQ, 30);
+        assert!(allowed_key(shift) && allowed_key(a) && !allowed_key(9999));
+        let (mut u, p) = to_file("chord");
+        assert!(u.chord(&[shift, 9999], true).is_err(), "a key outside the allowlist is refused");
+        if allowed_key(sysrq) {
+            assert!(u.chord(&[alt, sysrq], true).is_err(), "alt+sysrq is refused");
+        }
+        assert_eq!(key_events(&p), vec![], "nothing was pressed");
+        assert!(u.pressed.is_empty());
+        u.chord(&[shift, a], true).unwrap();
+        u.chord(&[shift, a], false).unwrap();
+        assert_eq!(key_events(&p), vec![(shift, 1), (a, 1), (a, 0), (shift, 0)]);
+        drop(u);
+        let _ = std::fs::remove_file(p);
+    }
+
     /// Creates a real controller; needs write access to /dev/uinput, so it only runs with
     /// SM_UINPUT_TEST=1 (e.g. as root in a container with --device /dev/uinput).
     #[test]
