@@ -12,6 +12,11 @@ Events have no `id`: `{"v":1,"event":"motion",…}`. A request without
 `"v": 1` is rejected with code `version`. Arguments never override `v`,
 `id` or `cmd`.
 
+A client may send many requests without waiting. The broker answers every one, in order;
+when a client gets ahead by more than about a thousand requests, the broker stops reading its
+socket until it catches up, so the client's writes block rather than requests being dropped.
+Requests sent just before a client hangs up still run.
+
 ## Broker — `/run/3dmouse/broker.sock`
 
 Any local user may connect. Commands marked **control** require the peer
@@ -27,7 +32,7 @@ broker's own uid is accepted.
 | `subscribe` | `motion` bool, `max_hz` 1–1000 (default 60), `buttons` bool, `devices` bool | events: `motion {dev, raw[6], norm[6], spnav[6], t}`, `button {dev, button, pressed, t}`, `device {op, …}`, `status` |
 | `set_config` **control** | `nav` NavConfig, `app_mode`, `spnav_buttons` {"devbtn": spnavbtn}, `profile` | every field is optional; a supplied `nav`, `app_mode` or `spnav_buttons` that is not understood (including `null`) is rejected with `invalid` and the active profile is kept; the sender becomes the config owner; owner disconnect reverts |
 | `clear_config` **control** | – | built-in defaults; only the current config owner may clear, anyone else gets `not_owner` |
-| `set_session` **control** | `locked` bool | while locked `inject` is refused and keys are released |
+| `set_session` **control** | `locked` bool (required) | while locked `inject` is refused and keys are released; a missing or non-boolean `locked` is rejected with `invalid` and the lock state is kept |
 | `inject` **control** | one of `keys` [codes] (+ `down` bool, omitted = tap), `scroll {v, h}` (1/120 notch units), `rel {code, value}` | key codes limited to the shipped key table + mouse buttons; 2000 events/s/connection |
 | `release_all` **control** | – | release every key this connection holds |
 | `set_mode` **control** | `mode`: `auto` (any controller) or a forced mode (root only) | re-negotiate ownership |
